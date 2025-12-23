@@ -1,0 +1,1542 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KUJI X IMPACT - 超次元一番賞</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Bebas+Neue&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --anime-yellow: #facc15;
+            --anime-red: #ef4444;
+            --anime-cyan: #22d3ee;
+            --anime-dark: #0f172a;
+        }
+
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: var(--anime-dark);
+            color: white;
+            -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
+            background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 0);
+            background-size: 20px 20px;
+            user-select: none;
+        }
+
+        .font-bebas { font-family: 'Bebas Neue', cursive; }
+
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* 斜切設計 */
+        .skew-box { transform: skewX(-10deg); }
+        .unskew { transform: skewX(10deg); }
+
+        /* 動漫風按鈕 */
+        .btn-anime {
+            position: relative;
+            background: var(--anime-yellow);
+            color: black;
+            font-weight: 900;
+            border: 3px solid black;
+            box-shadow: 4px 4px 0px black;
+            transition: all 0.1s;
+        }
+        .btn-anime:active {
+            transform: translate(2px, 2px);
+            box-shadow: 1px 1px 0px black;
+        }        /* 籤紙卡片 - 一番賞籤紙風格 */
+        .ticket-card {
+            position: relative;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            filter: grayscale(0.8) brightness(0.4);
+            transform: scale(0.85);
+            background: linear-gradient(135deg, #ff5722 0%, #ff7043 50%, #ff8a65 100%);
+            border: 3px solid white;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.2), 0 4px 8px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .ticket-card::before {
+            content: '';
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            right: 8px;
+            bottom: 8px;
+            border: 2px solid rgba(255,255,255,0.6);
+            pointer-events: none;
+        }
+        
+        .ticket-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(
+                90deg,
+                transparent,
+                transparent 2px,
+                rgba(255,255,255,0.03) 2px,
+                rgba(255,255,255,0.03) 4px
+            );
+            pointer-events: none;
+        }
+        
+        .ticket-card.active {
+            filter: grayscale(0) brightness(1.1);
+            transform: scale(1.05) rotate(-2deg);
+            border-color: white;
+            box-shadow: inset 0 0 30px rgba(255,255,255,0.3), 
+                        0 0 40px rgba(255, 87, 34, 0.8),
+                        0 8px 16px rgba(0,0,0,0.4);
+            z-index: 10;
+        }/* 咪牌封面遮罩 - 移除 pointer-events */
+        #ticket-cover {
+            clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
+            will-change: clip-path;
+            cursor: move;
+            cursor: grab;
+        }
+        
+        #ticket-cover:active {
+            cursor: grabbing;
+        }        /* 移除抖動效果 */        /* 撕裂痕跡效果 */
+        .tear-effect {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: linear-gradient(135deg, 
+                transparent 0%, 
+                rgba(255,255,255,0.15) 48%, 
+                rgba(255,255,255,0.3) 50%, 
+                rgba(255,255,255,0.15) 52%, 
+                transparent 100%);
+            opacity: 0;
+            transform: translateX(-100%);
+            transition: transform 0.3s linear, opacity 0.2s;
+        }
+
+        #ticket-cover.tearing .tear-effect {
+            opacity: 1;
+            transform: translateX(100%);
+        }
+
+        /* 獎品內容淡入 */
+        #prize-content {
+            opacity: 0;
+            transform: scale(0.9) rotate(-2deg);
+            transition: opacity 0.8s ease-out, transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        #prize-content.revealed {
+            opacity: 1;
+            transform: scale(1) rotate(0deg);
+        }
+
+        /* 容器動畫 */
+        @keyframes ticket-enter {
+            from {
+                opacity: 0;
+                transform: scale(0.85) translateY(40px) rotate(-5deg);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0) rotate(0deg);
+            }
+        }
+
+        .ticket-enter {
+            animation: ticket-enter 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }        /* 移除全景遮罩動畫 */
+
+        /* 跑馬燈 */
+        .marquee-container { overflow: hidden; white-space: nowrap; }
+        .marquee-content { display: inline-block; animation: marquee 25s linear infinite; }
+        @keyframes marquee {
+            0% { transform: translateX(100vw); }
+            100% { transform: translateX(-100%); }
+        }
+
+        /* 速度線背景 */
+        .speed-lines {
+            background: repeating-conic-gradient(from 0deg, transparent 0deg 1.5deg, rgba(255,255,255,0.03) 1.5deg 3deg);
+            animation: rotate-lines 15s linear infinite;
+        }
+        @keyframes rotate-lines {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }        @keyframes shake {
+            0%, 100% { transform: translate(0, 0); }
+            20% { transform: translate(-2px, 1px); }
+            40% { transform: translate(2px, -1px); }
+        }
+        .animate-shake { animation: shake 0.3s infinite; }
+
+        .no-scroll { overflow: hidden; height: 100vh; }
+
+        /* ============ 大獎特效動畫 ============ */
+        
+        /* A賞：金色粒子爆炸 */
+        @keyframes goldExplosion {
+            0% { 
+                transform: scale(0.5) rotate(0deg);
+                opacity: 0;
+            }
+            50% { 
+                transform: scale(1.2) rotate(180deg);
+                opacity: 1;
+            }
+            100% { 
+                transform: scale(1) rotate(360deg);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes goldPulse {
+            0%, 100% { 
+                box-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 
+                            0 0 40px rgba(255, 215, 0, 0.6),
+                            0 0 60px rgba(255, 215, 0, 0.4);
+            }
+            50% { 
+                box-shadow: 0 0 40px rgba(255, 215, 0, 1), 
+                            0 0 80px rgba(255, 215, 0, 0.8),
+                            0 0 120px rgba(255, 215, 0, 0.6);
+            }
+        }
+        
+        @keyframes goldParticle {
+            0% { 
+                transform: translate(0, 0) scale(1);
+                opacity: 1;
+            }
+            100% { 
+                transform: translate(var(--tx), var(--ty)) scale(0);
+                opacity: 0;
+            }
+        }
+        
+        .prize-a-effect {
+            animation: goldExplosion 1s cubic-bezier(0.34, 1.56, 0.64, 1), 
+                       goldPulse 2s ease-in-out infinite 1s;
+        }
+        
+        /* B賞：銀色光芒 */
+        @keyframes silverShine {
+            0% { 
+                transform: scale(0.8) rotate(-10deg);
+                opacity: 0;
+                filter: brightness(1);
+            }
+            50% { 
+                transform: scale(1.1) rotate(5deg);
+                opacity: 1;
+                filter: brightness(1.5);
+            }
+            100% { 
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+                filter: brightness(1);
+            }
+        }
+        
+        @keyframes silverGlow {
+            0%, 100% { 
+                box-shadow: 0 0 15px rgba(192, 192, 192, 0.6),
+                            0 0 30px rgba(192, 192, 192, 0.4);
+            }
+            50% { 
+                box-shadow: 0 0 30px rgba(192, 192, 192, 0.9),
+                            0 0 60px rgba(192, 192, 192, 0.6);
+            }
+        }
+        
+        @keyframes starFall {
+            0% { 
+                transform: translateY(-100%) rotate(0deg);
+                opacity: 1;
+            }
+            100% { 
+                transform: translateY(200%) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        .prize-b-effect {
+            animation: silverShine 0.8s cubic-bezier(0.34, 1.56, 0.64, 1),
+                       silverGlow 2s ease-in-out infinite 0.8s;
+        }
+          /* C賞：彩虹漸變（移除旋轉動畫） */
+        @keyframes rainbowGlow {
+            0% { 
+                box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+            }
+            25% { 
+                box-shadow: 0 0 20px rgba(255, 255, 0, 0.5);
+            }
+            50% { 
+                box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+            }
+            75% { 
+                box-shadow: 0 0 20px rgba(0, 0, 255, 0.5);
+            }
+            100% { 
+                box-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
+            }
+        }
+        
+        .prize-c-effect {
+            animation: rainbowGlow 3s linear infinite;
+        }
+        
+        /* 粒子容器 */
+        .particles-container {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: goldParticle 1.5s ease-out forwards;
+        }
+        
+        .star {
+            position: absolute;
+            font-size: 24px;
+            animation: starFall 2s linear forwards;
+        }
+    </style>
+</head>
+<body class="pb-20 md:pb-0">    <!-- 頂部導覽 -->
+    <header class="sticky top-0 z-40 bg-black/95 backdrop-blur-md border-b-2 border-yellow-400">
+        <div class="max-w-6xl mx-auto px-4 h-16 md:h-20 flex items-center justify-between">
+            <div class="flex items-center gap-3 cursor-pointer group" onclick="showView('list')">
+                <div class="bg-yellow-400 p-1.5 md:p-2 border-2 border-black -rotate-6">
+                    <i data-lucide="zap" class="text-black w-5 h-5 md:w-6 md:h-6 fill-current"></i>
+                </div>
+                <h1 class="font-black text-xl md:text-2xl italic uppercase tracking-tighter">
+                    Kuji<span class="text-yellow-400">X</span>Impact
+                </h1>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2 bg-slate-800 px-4 py-2 rounded-full border border-white/10">
+                    <i data-lucide="coins" class="w-4 h-4 md:w-5 md:h-5 text-yellow-400"></i>
+                    <span class="font-black font-bebas text-base md:text-lg">9,999</span>
+                </div>
+                <div class="w-9 h-9 md:w-10 md:h-10 rounded-full bg-blue-600 border-2 border-white flex items-center justify-center shadow-lg">
+                    <i data-lucide="user" class="w-5 h-5 md:w-6 md:h-6 text-white"></i>
+                </div>
+            </div>
+        </div>
+        <!-- 快訊跑馬燈 -->
+        <div class="bg-red-600 text-xs md:text-sm font-black italic tracking-wider py-1 border-b border-black marquee-container">
+            <div class="marquee-content">
+                <span class="mx-6 text-white uppercase"><span class="text-yellow-300">JACKPOT:</span> 玩家 [GOD_HAND] 抽得 A 賞！</span>
+                <span class="mx-6 text-white uppercase"><span class="text-yellow-300">NEWS:</span> 全看板機率 UP 中！</span>
+                <span class="mx-6 text-white uppercase"><span class="text-yellow-300">ALERT:</span> 涉谷事變看板即將完售！</span>
+            </div>
+        </div>
+    </header>
+
+    <main id="app-content" class="max-w-6xl mx-auto p-4 md:p-6"></main>    <!-- 1. 選籤板 (桌機支援按鈕與拖拽) - 添加全景遮罩 -->
+    <div id="selection-overlay" class="fixed inset-0 z-50 hidden flex flex-col items-center justify-center bg-black/98 overflow-hidden">
+        <!-- 全景遮罩背景 -->
+        <div class="speed-lines absolute inset-0 opacity-10 pointer-events-none"></div>
+        <div class="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-800 to-black pointer-events-none"></div>
+          <div class="text-center mb-6 md:mb-8 relative z-10 px-4">
+            <h2 class="text-3xl md:text-5xl font-black italic text-yellow-400 mb-2 drop-shadow-md">命運の挑選</h2>
+            <p class="text-cyan-400 font-bold tracking-widest text-sm md:text-base uppercase opacity-70" id="draw-type-label">選擇你的幸運籤</p>
+        </div>
+
+        <div class="relative w-full z-10 flex items-center justify-center px-4">
+            <button onclick="moveCarousel(-1)" class="absolute left-4 md:left-16 z-30 bg-white/5 hover:bg-yellow-400 hover:text-black p-4 md:p-5 rounded-full border border-white/10 transition-all hidden md:block">
+                <i data-lucide="chevron-left" class="w-10 h-10 md:w-12 md:h-12"></i>
+            </button>
+
+            <div id="ticket-carousel" class="w-full max-w-6xl overflow-x-auto flex items-center gap-4 px-[35vw] py-10 scrollbar-hide snap-x snap-mandatory cursor-grab active:cursor-grabbing"></div>
+
+            <button onclick="moveCarousel(1)" class="absolute right-4 md:right-16 z-30 bg-white/5 hover:bg-yellow-400 hover:text-black p-4 md:p-5 rounded-full border border-white/10 transition-all hidden md:block">
+                <i data-lucide="chevron-right" class="w-10 h-10 md:w-12 md:h-12"></i>
+            </button>
+        </div>        <div class="mt-8 relative z-10 flex flex-col items-center gap-4">
+            <button onclick="confirmSelection()" id="confirm-btn" class="btn-anime px-16 md:px-20 py-4 md:py-5 text-2xl md:text-3xl italic tracking-tighter hover:scale-105">就決定是你了！</button>
+            <div id="draw-count-info" class="text-white/60 text-sm md:text-base font-bold"></div>
+        </div>
+        <button onclick="closeSelection()" class="absolute top-4 right-4 text-white/30 hover:text-white"><i data-lucide="x" class="w-7 h-7 md:w-8 md:h-8"></i></button>
+    </div>    <!-- 2. 咪牌 - 全景遮罩 -->
+    <div id="peel-overlay" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4 select-none">
+        <!-- 全景遮罩背景 -->
+        <div class="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-800 to-black"></div>
+        <div class="speed-lines absolute inset-0 opacity-10 pointer-events-none"></div>
+        
+        <div class="relative z-10 w-full max-w-[300px] md:max-w-sm flex flex-col items-center">
+            <div id="peel-hint" class="text-white text-lg md:text-xl font-black mb-6 text-center animate-shake">
+                <span class="bg-red-600 px-6 py-2 md:px-7 md:py-2.5 italic shadow-lg uppercase">撕開這張籤！ PULL IT!</span>
+            </div>
+
+            <div id="kuji-ticket-container" class="relative w-full aspect-[2/3] bg-gray-900 rounded-xl shadow-2xl overflow-hidden border-2 border-white/10 ticket-enter">
+                <!-- 底層獎品 -->
+                <div id="prize-content" class="absolute inset-0 bg-gradient-to-br from-white to-gray-50 flex flex-col items-center justify-center p-6 border-[10px] border-yellow-400 shadow-inner">
+                    <div id="prize-icon" class="text-8xl md:text-9xl mb-4 drop-shadow-lg">🏆</div>
+                    <div id="prize-rank" class="text-9xl md:text-[10rem] font-black italic text-black leading-none font-bebas drop-shadow-md">A</div>
+                    <div id="prize-name" class="text-lg md:text-xl font-black text-center text-white bg-black px-5 py-2 md:px-6 md:py-2.5 mt-4 border-2 border-yellow-400 uppercase shadow-lg">Item Win!</div>
+                </div>
+                <!-- 遮罩封面 - 可互動，修復消失問題 -->
+                <div id="ticket-cover" class="absolute inset-0 w-full h-full bg-slate-900 flex flex-col items-center justify-center z-10">
+                    <!-- 撕裂光效 -->
+                    <div class="tear-effect"></div>
+                    <!-- 封面內容 -->
+                    <div class="absolute inset-0 opacity-20 bg-[radial-gradient(var(--anime-cyan)_1px,transparent_0)] bg-[size:10px_10px] pointer-events-none"></div>
+                    <div class="border-4 border-yellow-400/40 p-6 w-[85%] h-[90%] flex flex-col items-center justify-center relative bg-black/50 backdrop-blur-sm pointer-events-none">
+                        <div class="text-4xl md:text-5xl font-black text-white italic mb-2 drop-shadow-lg">一抽入魂</div>
+                        <div class="text-cyan-400 font-bold text-sm md:text-base tracking-[0.2em] uppercase mb-10">LUCKY DRAW</div>
+                        <i data-lucide="sparkles" class="w-12 h-12 md:w-14 md:h-14 text-yellow-400 opacity-40"></i>
+                    </div>
+                </div>
+            </div>
+            <button onclick="finishPeel()" class="mt-6 text-white/20 hover:text-white/60 font-bold text-xs md:text-sm border-b border-white/10 uppercase transition-colors">Skip Animation</button>
+        </div>
+    </div><!-- 移除過渡遮罩 -->    <!-- 3. 結果爆裂 -->
+    <div id="result-overlay" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-4 bg-black/95">
+        <div class="speed-lines absolute inset-0 opacity-20"></div>
+        
+        <!-- 粒子特效容器 -->
+        <div id="particles-container" class="particles-container"></div>
+        
+        <!-- 關閉按鈕 -->
+        <button onclick="document.getElementById('result-overlay').classList.add('hidden'); showView('detail');" class="absolute top-4 right-4 z-50 bg-white/10 hover:bg-white/20 text-white p-3 rounded-full border border-white/20 transition-all">
+            <i data-lucide="x" class="w-6 h-6 md:w-7 md:h-7"></i>
+        </button>
+        
+        <div id="result-card" class="bg-yellow-400 w-full max-w-sm p-1 border-4 border-black shadow-[10px_10px_0px_rgba(0,0,0,1)] animate-scale-in relative">
+            <div class="bg-white p-6 md:p-8 border-2 border-black relative text-center">
+                <div id="res-icon" class="w-28 h-28 md:w-32 md:h-32 mx-auto bg-black flex items-center justify-center text-6xl md:text-7xl mb-4 border-4 border-yellow-400 shadow-lg rotate-3">🏆</div>
+                <h2 id="res-rank" class="text-8xl md:text-9xl font-black text-black italic leading-none font-bebas">A</h2>
+                <h3 id="res-name" class="text-xl md:text-2xl font-black text-black mt-3 mb-8 border-b-2 border-black pb-3">獎品名稱</h3>                <div class="flex flex-col gap-3">
+                    <button onclick="startDraw(1)" class="btn-anime py-4 md:py-5 text-xl md:text-2xl flex items-center justify-center gap-2">
+                        <i data-lucide="rotate-cw" class="w-6 h-6 md:w-7 md:h-7"></i> 再抽一次
+                    </button>
+                    <button onclick="showView('list')" class="bg-black text-white font-black py-3 text-sm md:text-base uppercase">返回大廳</button>
+                </div>
+            </div>
+        </div>
+    </div>    <!-- 4. 10連抽結果 -->    <div id="draw10-overlay" class="fixed inset-0 z-[70] hidden bg-black/95 overflow-y-auto">
+        <div class="speed-lines absolute inset-0 opacity-20"></div>
+        
+        <!-- 關閉按鈕 -->
+        <button onclick="document.getElementById('draw10-overlay').classList.add('hidden'); showView('detail');" class="fixed top-4 right-4 z-[80] bg-white/10 hover:bg-white/20 text-white p-3 rounded-full border border-white/20 transition-all">
+            <i data-lucide="x" class="w-6 h-6 md:w-7 md:h-7"></i>
+        </button>
+        
+        <div class="relative z-10 w-full max-w-4xl mx-auto p-4 py-8 md:py-12 min-h-full flex items-center">
+            <div class="w-full bg-gradient-to-r from-purple-600 to-pink-600 p-1 border-4 border-black shadow-[10px_10px_0px_rgba(0,0,0,1)]">
+                <div class="bg-white p-4 md:p-8 border-2 border-black">
+                    <h2 class="text-2xl md:text-4xl font-black text-center mb-2 italic uppercase bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">10連抽結果</h2>
+                    <p class="text-center text-gray-500 font-bold mb-4 md:mb-6 text-xs md:text-base">10 CONSECUTIVE DRAWS RESULT</p>
+                    
+                    <div id="draw10-results" class="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-4 mb-4 md:mb-6">
+                        <!-- 結果將動態填充 -->
+                    </div>
+                    
+                    <div id="draw10-summary" class="bg-gradient-to-r from-purple-100 to-pink-100 border-2 border-black p-3 md:p-5 mb-4 md:mb-6">
+                        <h3 class="font-black text-base md:text-xl mb-2 md:mb-3 uppercase">抽獎統計</h3>
+                        <div id="draw10-stats" class="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
+                            <!-- 統計將動態填充 -->
+                        </div>
+                    </div>
+                      <div class="flex flex-col md:flex-row gap-2 md:gap-3">
+                        <button onclick="startDraw(10)" class="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-black py-3 md:py-4 text-base md:text-xl border-3 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:translate-y-[-2px] transition-all flex items-center justify-center gap-2">
+                            <i data-lucide="zap" class="w-4 h-4 md:w-6 md:h-6"></i> 再抽10連
+                        </button>
+                        <button onclick="startDraw(1)" class="flex-1 btn-anime py-3 md:py-4 text-base md:text-xl">
+                            單抽模式
+                        </button>
+                        <button onclick="showView('list')" class="bg-black text-white font-black py-3 md:py-4 px-4 md:px-6 text-xs md:text-base uppercase border-2 border-white">返回大廳</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>        const MOCK_DATA = [
+            { 
+                id: 1, 
+                title: "龍珠：極意再現", 
+                price: 350, 
+                total: 80, 
+                sold: 74, 
+                image: "https://kujiflip.tw/uploads/1764866651737.jpg", 
+                tags: ["熱門", "剩 6 抽"], 
+                status: "HOT", 
+                prizes: { 
+                    A: { name: "自在極意功 悟空", left: 1, total: 2, icon: "🔥", value: 8000 }, 
+                    B: { name: "限定立牌", left: 2, total: 5, icon: "🖼️", value: 1500 },
+                    C: { name: "特製馬克杯", left: 3, total: 8, icon: "☕", value: 800 },
+                    D: { name: "壓克力吊飾", left: 0, total: 15, icon: "🎪", value: 300 },
+                    E: { name: "迷你公仔", left: 0, total: 25, icon: "🎭", value: 200 },
+                    F: { name: "貼紙組", left: 0, total: 25, icon: "📋", value: 100 }
+                } 
+            },
+            { 
+                id: 2, 
+                title: "[日版] 一番賞 《我的英雄學院》-更向前邁進", 
+                price: 300, 
+                total: 80, 
+                sold: 12, 
+                image: "https://firebasestorage.googleapis.com/v0/b/kuji-96189.appspot.com/o/1762847771147.jpg.webp?alt=media", 
+                tags: ["NEW", "A賞在"], 
+                status: "NEW", 
+                prizes: { 
+                    A: { name: "安妮亞模型", left: 3, total: 3, icon: "🥜", value: 6000 }, 
+                    B: { name: "主題掛軸", left: 5, total: 5, icon: "📁", value: 2000 },
+                    C: { name: "造型抱枕", left: 10, total: 10, icon: "🛏️", value: 1200 },
+                    D: { name: "徽章套組", left: 15, total: 15, icon: "🏅", value: 500 },
+                    E: { name: "文件夾", left: 22, total: 22, icon: "📂", value: 250 },
+                    F: { name: "明信片組", left: 25, total: 25, icon: "✉️", value: 150 }
+                } 
+            },
+            { 
+                id: 3, 
+                title: "一番賞《航海王》未來島 ～能量爆發", 
+                price: 280, 
+                total: 100, 
+                sold: 92, 
+                image: "https://kujiflip.tw/uploads/1764041306128.jpg", 
+                tags: ["緊急", "剩 8 抽"], 
+                status: "ALERT", 
+                prizes: { 
+                    A: { name: "五條悟模型", left: 1, total: 1, icon: "🧿", value: 12000 }, 
+                    B: { name: "毛巾組", left: 2, total: 5, icon: "🧣", value: 800 },
+                    C: { name: "手辦配件", left: 1, total: 10, icon: "⚡", value: 600 },
+                    D: { name: "海報套組", left: 2, total: 20, icon: "🎨", value: 400 },
+                    E: { name: "鑰匙圈", left: 2, total: 30, icon: "🔑", value: 200 },
+                    F: { name: "卡片組", left: 0, total: 34, icon: "🃏", value: 100 }
+                } 
+            },
+            { 
+                id: 4, 
+                title: "！一番賞《SPY×FAMILY 間諜家家酒》-Get ready to have fun!", 
+                price: 250, 
+                total: 80, 
+                sold: 40, 
+                image: "https://firebasestorage.googleapis.com/v0/b/kuji-96189.appspot.com/o/1764076262223.jpg.webp?alt=media", 
+                tags: ["特價", "半數在"], 
+                status: "EVENT", 
+                prizes: { 
+                    A: { name: "噴火龍玩偶", left: 2, total: 2, icon: "🔥", value: 5000 }, 
+                    B: { name: "餐具組", left: 3, total: 5, icon: "🍴", value: 1800 },
+                    C: { name: "收納盒", left: 8, total: 10, icon: "📦", value: 900 },
+                    D: { name: "杯墊組", left: 10, total: 18, icon: "🎯", value: 400 },
+                    E: { name: "便條紙", left: 12, total: 20, icon: "📝", value: 250 },
+                    F: { name: "透明卡", left: 5, total: 25, icon: "💎", value: 150 }
+                } 
+            }
+        ];        let currentKuji = null, drawnPrize = null, selectedIndex = 0, drawCount = 1;
+
+        // ============ 快速勝利包：數據管理 ============
+        
+        // 保底系統
+        const PITY_SYSTEM = {
+            maxDraws: 50, // 50抽保底
+            getCurrentCount: function(kujiId) {
+                const pity = JSON.parse(localStorage.getItem('pitySystem') || '{}');
+                return pity[kujiId] || 0;
+            },
+            increment: function(kujiId) {
+                const pity = JSON.parse(localStorage.getItem('pitySystem') || '{}');
+                pity[kujiId] = (pity[kujiId] || 0) + 1;
+                localStorage.setItem('pitySystem', JSON.stringify(pity));
+                return pity[kujiId];
+            },
+            reset: function(kujiId) {
+                const pity = JSON.parse(localStorage.getItem('pitySystem') || '{}');
+                pity[kujiId] = 0;
+                localStorage.setItem('pitySystem', JSON.stringify(pity));
+            },
+            getRemaining: function(kujiId) {
+                return this.maxDraws - this.getCurrentCount(kujiId);
+            },
+            getProgress: function(kujiId) {
+                return (this.getCurrentCount(kujiId) / this.maxDraws) * 100;
+            }
+        };        // 歷史記錄系統已移除
+
+        // 收藏系統
+        const FAVORITE_SYSTEM = {
+            toggle: function(kujiId) {
+                const favs = this.getAll();
+                const index = favs.indexOf(kujiId);
+                if (index > -1) {
+                    favs.splice(index, 1);
+                } else {
+                    favs.push(kujiId);
+                }
+                localStorage.setItem('favorites', JSON.stringify(favs));
+                return favs.includes(kujiId);
+            },
+            isFavorite: function(kujiId) {
+                return this.getAll().includes(kujiId);
+            },
+            getAll: function() {
+                return JSON.parse(localStorage.getItem('favorites') || '[]');
+            },
+            getFavoriteKujis: function() {
+                const favIds = this.getAll();
+                return MOCK_DATA.filter(k => favIds.includes(k.id));
+            }
+        };
+
+        // 計算機率輔助函數
+        function calculateProbability(kuji) {
+            const remaining = kuji.total - kuji.sold;
+            const stats = {};
+            
+            Object.entries(kuji.prizes).forEach(([rank, prize]) => {
+                const prob = remaining > 0 ? (prize.left / remaining * 100) : 0;
+                stats[rank] = {
+                    ...prize,
+                    probability: prob,
+                    odds: remaining > 0 ? `1/${Math.round(remaining / Math.max(prize.left, 1))}` : '0'
+                };
+            });
+            
+            return stats;
+        }
+
+        // 計算期望值
+        function calculateExpectedValue(kuji) {
+            const stats = calculateProbability(kuji);
+            let expectedValue = 0;
+            
+            Object.values(stats).forEach(prize => {
+                expectedValue += (prize.probability / 100) * prize.value;
+            });
+            
+            return Math.round(expectedValue);
+        }
+
+        function showView(name) {
+            const content = document.getElementById('app-content');
+            document.querySelectorAll('.fixed').forEach(el => el.classList.add('hidden'));
+            document.body.classList.remove('no-scroll');
+            if (name === 'list') renderList(content);
+            else if (name === 'detail') renderDetail(content);
+            lucide.createIcons();
+            window.scrollTo(0,0);
+        }        function renderList(container) {            const hotKuji = MOCK_DATA[0];
+            const hotStats = calculateProbability(hotKuji);
+            const hotEV = calculateExpectedValue(hotKuji);
+            const favorites = FAVORITE_SYSTEM.getFavoriteKujis();
+            
+            container.innerHTML = `
+                <div class="space-y-10 animate-fade-in pb-16">
+                    
+                    <!-- ❤️ 我的收藏 -->
+                    ${favorites.length > 0 ? `
+                    <section class="space-y-4">
+                        <div class="flex items-center justify-between px-1">
+                            <h3 class="text-2xl md:text-3xl font-black italic flex items-center gap-2 uppercase tracking-tighter">
+                                <i data-lucide="heart" class="w-6 h-6 text-red-500 fill-current"></i> 我的收藏
+                            </h3>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            ${favorites.map(kuji => {
+                                const stats = calculateProbability(kuji);
+                                const ev = calculateExpectedValue(kuji);
+                                const pityRemaining = PITY_SYSTEM.getRemaining(kuji.id);
+                                const isFav = FAVORITE_SYSTEM.isFavorite(kuji.id);
+                                return `
+                                <div onclick="selectKuji(${kuji.id})" class="bg-white border-2 border-black shadow-[5px_5px_0px_rgba(0,0,0,1)] cursor-pointer hover:-translate-y-1 transition-all">
+                                    <div class="flex h-32 md:h-40">
+                                        <div class="w-1/3 overflow-hidden border-r-2 border-black">
+                                            <img src="${kuji.image}" class="w-full h-full object-cover">
+                                        </div>
+                                        <div class="w-2/3 p-3 md:p-4 flex flex-col justify-between">
+                                            <div>
+                                                <h4 class="font-black text-base md:text-lg italic truncate text-black uppercase">${kuji.title}</h4>
+                                                <div class="text-xs md:text-sm text-gray-500 mt-1">保底剩餘: ${pityRemaining} 抽</div>
+                                            </div>
+                                            <div class="flex justify-between items-end">
+                                                <div class="font-bebas text-3xl md:text-4xl text-black">NT$${kuji.price}</div>
+                                                <button onclick="event.stopPropagation(); toggleFavorite(${kuji.id})" class="text-red-500 hover:scale-110 transition-transform">
+                                                    <i data-lucide="heart" class="w-5 h-5 md:w-6 md:h-6 fill-current"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `}).join('')}
+                        </div>
+                    </section>
+                    ` : ''}
+                      <!-- 精選大看板 -->
+                    <section class="relative bg-red-600 border-4 border-black p-1 shadow-[8px_8px_0px_rgba(0,0,0,1)] cursor-pointer group" onclick="selectKuji(${hotKuji.id})">
+                        <div class="speed-lines absolute inset-0 opacity-20"></div>
+                        <div class="relative bg-white flex flex-col h-full border-2 border-black">
+                            <!-- 圖片與基本資訊 -->
+                            <div class="flex flex-col md:flex-row">
+                                <div class="md:w-1/2 h-56 md:h-80 overflow-hidden border-b-2 md:border-b-0 md:border-r-2 border-black">
+                                    <img src="${hotKuji.image}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+                                </div>
+                                <div class="md:w-1/2 p-6 md:p-8 flex flex-col justify-between bg-white relative">
+                                    <div class="absolute -right-4 top-4 rotate-12 bg-red-600 text-white font-black px-5 py-2 text-sm md:text-base skew-box shadow-lg">HOT BOARD</div>
+                                    <div>
+                                        <span class="bg-black text-yellow-400 font-black px-3 py-1.5 text-sm md:text-base italic skew-box inline-block mb-4"><span class="unskew">RECOMMENDED</span></span>
+                                        <h2 class="text-black font-black text-3xl md:text-5xl italic leading-none uppercase tracking-tighter mb-3">${hotKuji.title}</h2>
+                                        <p class="text-gray-400 text-base md:text-lg font-bold mb-4 uppercase">僅剩 ${hotKuji.total - hotKuji.sold} 抽 • 大獎在箱</p>
+                                    </div>                                    <div class="flex items-end justify-between">
+                                        <div>
+                                            <div class="font-black font-bebas text-5xl md:text-6xl text-red-600">NT$${hotKuji.price}</div>
+                                            <div class="text-base md:text-lg text-gray-500 font-bold mt-1">期望值: NT$${hotEV}</div>
+                                        </div>
+                                        <button onclick="event.stopPropagation(); selectKuji(${hotKuji.id});" class="btn-anime px-8 md:px-10 py-2.5 md:py-3 text-base md:text-lg whitespace-nowrap">立即開抽</button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 機率分析區 -->
+                            <div class="border-t-2 border-black bg-gray-50 p-4 md:p-6">
+                                <div class="flex items-center gap-2 mb-4">
+                                    <span class="text-base md:text-lg font-black text-gray-600 uppercase tracking-wider">當前機率分析</span>
+                                    <div class="flex-1 h-px bg-gray-300"></div>
+                                </div>
+                                <div class="grid grid-cols-3 md:grid-cols-6 gap-3">
+                                    ${Object.entries(hotStats).map(([rank, prize]) => `
+                                        <div class="bg-white border border-black p-3 md:p-4 text-center ${prize.left === 0 ? 'opacity-40' : ''}">
+                                            <div class="text-3xl md:text-4xl mb-2">${prize.icon}</div>
+                                            <div class="font-black text-base md:text-lg text-black mb-2">${rank} 賞</div>
+                                            <div class="text-sm md:text-base font-bold ${prize.left > 0 ? 'text-green-600' : 'text-red-600'}">
+                                                ${prize.left > 0 ? prize.probability.toFixed(1) + '%' : '已抽完'}
+                                            </div>
+                                            <div class="text-sm md:text-base text-gray-400 mt-1">${prize.left}/${prize.total}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <!-- 速抽專區 -->
+                    <section class="space-y-4">
+                        <div class="flex items-center justify-between px-1">
+                            <h3 class="text-2xl md:text-3xl font-black italic flex items-center gap-2 uppercase tracking-tighter">
+                                <span class="w-2 h-6 bg-cyan-400 skew-box"></span> Quick Picks
+                            </h3>
+                            <span class="text-sm md:text-base text-gray-500 font-bold uppercase tracking-widest">Swipe for more</span>
+                        </div>
+                        <div class="flex gap-4 overflow-x-auto scrollbar-hide pb-4 px-1">
+                            ${MOCK_DATA.slice(1, 4).map(kuji => {
+                                const stats = calculateProbability(kuji);
+                                const topPrizes = Object.entries(stats).slice(0, 3);
+                                return `
+                                <div onclick="selectKuji(${kuji.id})" class="flex-shrink-0 w-72 md:w-80 bg-white border-2 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] cursor-pointer hover:translate-y-[-2px] transition-all">
+                                    <div class="h-40 md:h-48 overflow-hidden border-b-2 border-black relative">
+                                        <img src="${kuji.image}" class="w-full h-full object-cover">
+                                        <div class="absolute top-2 left-2 bg-yellow-400 text-black font-black text-sm md:text-base px-3 py-1.5 border border-black">${kuji.tags[0]}</div>
+                                    </div>
+                                    <div class="p-4 md:p-5">
+                                        <h4 class="font-black text-lg md:text-xl italic truncate text-black uppercase mb-3">${kuji.title}</h4>
+                                        <div class="flex gap-2 mt-2 mb-4">
+                                            ${topPrizes.map(([rank, prize]) => `
+                                                <div class="flex-1 bg-gray-100 p-2 md:p-3 text-center border border-gray-200">
+                                                    <div class="text-2xl md:text-3xl">${prize.icon}</div>
+                                                    <div class="text-sm md:text-base font-bold text-black mt-1">${rank}</div>
+                                                    <div class="text-sm md:text-base ${prize.left > 0 ? 'text-green-600' : 'text-red-500'} font-bold">
+                                                        ${prize.left > 0 ? prize.probability.toFixed(0) + '%' : '完'}
+                                                    </div>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                        <div class="flex justify-between items-center">
+                                            <span class="font-bebas text-3xl md:text-4xl text-black">NT$${kuji.price}</span>
+                                            <button onclick="event.stopPropagation(); selectKuji(${kuji.id});" class="bg-black text-yellow-400 font-black px-4 py-2 text-sm md:text-base border-2 border-yellow-400 hover:bg-yellow-400 hover:text-black transition-all">立即開抽</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `}).join('')}
+                        </div>
+                    </section>
+                    
+                    <!-- 所有看板 -->
+                    <section class="space-y-6">
+                        <div class="flex items-center gap-2 px-1">
+                            <h3 class="text-2xl md:text-3xl font-black italic flex items-center gap-2 uppercase tracking-tighter">
+                                <span class="w-2 h-6 bg-yellow-400 skew-box"></span> All Boards
+                            </h3>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            ${MOCK_DATA.map(kuji => {
+                                const stats = calculateProbability(kuji);
+                                const ev = calculateExpectedValue(kuji);
+                                return `
+                                <div onclick="selectKuji(${kuji.id})" class="bg-white border-2 border-black shadow-[5px_5px_0px_rgba(0,0,0,1)] cursor-pointer flex flex-col group transition-all hover:-translate-y-1">
+                                    <div class="flex h-40 md:h-48">
+                                        <div class="w-1/3 overflow-hidden border-r-2 border-black">
+                                            <img src="${kuji.image}" class="w-full h-full object-cover group-hover:scale-110 transition-transform">
+                                        </div>
+                                        <div class="w-2/3 p-4 md:p-5 flex flex-col justify-between relative bg-white">
+                                            <div>
+                                                <div class="flex justify-between items-start mb-2">
+                                                    <h4 class="font-black text-lg md:text-2xl italic truncate text-black pr-2 uppercase">${kuji.title}</h4>
+                                                    <span class="text-xs md:text-sm font-black bg-red-100 text-red-600 px-2.5 py-1 border border-red-200 uppercase whitespace-nowrap">${kuji.status}</span>
+                                                </div>
+                                                <div class="flex gap-2 flex-wrap">
+                                                    ${kuji.tags.map(t => `<span class="text-sm md:text-base font-bold text-gray-400 uppercase border border-gray-100 px-2.5 py-1">${t}</span>`).join('')}
+                                                </div>
+                                            </div>
+                                            <div class="flex justify-between items-end border-t border-gray-100 pt-3 mt-2">
+                                                <div>
+                                                    <div class="font-bebas text-4xl md:text-5xl text-black">NT$${kuji.price}</div>
+                                                    <div class="text-sm md:text-base text-gray-500">EV: ${ev} | 剩${kuji.total - kuji.sold}抽</div>
+                                                </div>
+                                                <button onclick="event.stopPropagation(); selectKuji(${kuji.id});" class="bg-black text-yellow-400 font-black px-4 py-2 text-sm md:text-base border-2 border-yellow-400 hover:bg-yellow-400 hover:text-black transition-all whitespace-nowrap">立即開抽</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- 快速機率預覽 -->
+                                    <div class="border-t-2 border-black bg-gray-50 p-3 flex gap-1">
+                                        ${Object.entries(stats).slice(0, 4).map(([rank, prize]) => `
+                                            <div class="flex-1 text-center">
+                                                <div class="text-sm md:text-base font-black text-black">${rank}</div>
+                                                <div class="text-sm md:text-base ${prize.left > 0 ? 'text-green-600' : 'text-red-500'} font-bold">
+                                                    ${prize.left > 0 ? prize.probability.toFixed(0) + '%' : '✕'}
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            `}).join('')}
+                        </div>
+                    </section>
+                </div>
+            `;
+        }        function renderDetail(container) {
+            const stats = calculateProbability(currentKuji);
+            const ev = calculateExpectedValue(currentKuji);
+            const remaining = currentKuji.total - currentKuji.sold;
+            const pityCount = PITY_SYSTEM.getCurrentCount(currentKuji.id);
+            const pityRemaining = PITY_SYSTEM.getRemaining(currentKuji.id);
+            const pityProgress = PITY_SYSTEM.getProgress(currentKuji.id);
+            const isFavorite = FAVORITE_SYSTEM.isFavorite(currentKuji.id);
+            
+            // 生成獎品分析HTML
+            let prizesHTML = '';
+            Object.entries(stats).forEach(([rank, prize]) => {
+                const progressWidth = (prize.left / prize.total) * 100;
+                const borderColor = prize.left > 0 ? 'border-yellow-400' : 'border-gray-400';
+                const statusColor = prize.left > 0 ? 'text-green-600' : 'text-red-600';
+                const statusText = prize.left > 0 ? progressWidth.toFixed(1) + '% 剩餘' : '完售';
+                const barColor = prize.left > 0 ? 'bg-green-500' : 'bg-red-500';
+                const probText = prize.left > 0 ? prize.probability.toFixed(2) + '%' : '0%';
+                
+                prizesHTML += '<div class="mb-5 pb-5 border-b border-gray-200 last:border-0">';
+                prizesHTML += '  <div class="flex items-center justify-between mb-3">';
+                prizesHTML += '    <div class="flex items-center gap-3">';
+                prizesHTML += '      <div class="w-14 h-14 md:w-16 md:h-16 bg-black flex items-center justify-center text-3xl md:text-4xl border-2 ' + borderColor + '">';
+                prizesHTML += '        ' + prize.icon;
+                prizesHTML += '      </div>';
+                prizesHTML += '      <div>';
+                prizesHTML += '        <div class="flex items-center gap-2">';
+                prizesHTML += '          <span class="text-2xl md:text-3xl font-black italic text-black">' + rank + ' 賞</span>';
+                if (prize.left === 0) {
+                    prizesHTML += '          <span class="text-xs md:text-sm font-black bg-red-100 text-red-600 px-3 py-1 border border-red-200">已完售</span>';
+                }
+                prizesHTML += '        </div>';
+                prizesHTML += '        <div class="text-base md:text-lg font-black text-gray-700 uppercase">' + prize.name + '</div>';
+                prizesHTML += '      </div>';
+                prizesHTML += '    </div>';
+                prizesHTML += '    <div class="text-right">';
+                prizesHTML += '      <div class="text-xs md:text-sm font-black text-gray-500">價值</div>';
+                prizesHTML += '      <div class="font-bebas text-xl md:text-2xl text-black">NT$' + prize.value + '</div>';
+                prizesHTML += '    </div>';
+                prizesHTML += '  </div>';
+                prizesHTML += '  <div class="mb-3">';
+                prizesHTML += '    <div class="flex justify-between text-xs md:text-sm font-bold mb-2">';
+                prizesHTML += '      <span class="text-gray-600">剩餘 ' + prize.left + ' / ' + prize.total + '</span>';
+                prizesHTML += '      <span class="' + statusColor + '">' + statusText + '</span>';
+                prizesHTML += '    </div>';
+                prizesHTML += '    <div class="w-full h-3 bg-gray-200 border border-black overflow-hidden">';
+                prizesHTML += '      <div class="h-full ' + barColor + ' transition-all duration-500" style="width: ' + progressWidth + '%"></div>';
+                prizesHTML += '    </div>';
+                prizesHTML += '  </div>';
+                prizesHTML += '  <div class="grid grid-cols-3 gap-2 md:gap-3 mt-3">';
+                prizesHTML += '    <div class="bg-gray-50 border border-gray-200 p-3 text-center">';
+                prizesHTML += '      <div class="text-xs md:text-sm text-gray-500 font-bold uppercase mb-1">當前機率</div>';
+                prizesHTML += '      <div class="font-black ' + statusColor + ' text-base md:text-lg">' + probText + '</div>';
+                prizesHTML += '    </div>';
+                prizesHTML += '    <div class="bg-gray-50 border border-gray-200 p-3 text-center">';
+                prizesHTML += '      <div class="text-xs md:text-sm text-gray-500 font-bold uppercase mb-1">中獎率</div>';
+                prizesHTML += '      <div class="font-black text-black text-base md:text-lg">' + prize.odds + '</div>';
+                prizesHTML += '    </div>';
+                prizesHTML += '    <div class="bg-gray-50 border border-gray-200 p-3 text-center">';
+                prizesHTML += '      <div class="text-xs md:text-sm text-gray-500 font-bold uppercase mb-1">原始機率</div>';
+                prizesHTML += '      <div class="font-black text-gray-600 text-base md:text-lg">' + (prize.total / currentKuji.total * 100).toFixed(1) + '%</div>';
+                prizesHTML += '    </div>';                prizesHTML += '  </div>';
+                prizesHTML += '</div>';
+            });
+            
+            // 保底警報HTML
+            let pityAlertHTML = '';
+            if (pityRemaining <= 10) {
+                pityAlertHTML = '<div class="bg-gradient-to-r from-purple-100 to-pink-100 border-2 border-purple-300 p-3 mb-4 text-center">';
+                pityAlertHTML += '  <div class="text-xs md:text-sm font-black text-purple-600 uppercase">⚡ 保底警報</div>';
+                pityAlertHTML += '  <div class="text-lg md:text-xl font-black text-purple-800">還差 ' + pityRemaining + ' 抽必得 A 賞！</div>';
+                pityAlertHTML += '</div>';
+            }
+            
+            const evColor = ev > currentKuji.price ? 'text-green-600' : 'text-red-600';
+            const evTip = ev > currentKuji.price ? '✓ 期望值大於單抽價格' : '⚠ 期望值小於單抽價格';
+            const favColor = isFavorite ? 'text-red-500' : 'text-gray-300';
+            const favFill = isFavorite ? 'fill-current' : '';
+              container.innerHTML = '<div class="flex flex-col gap-6 animate-slide-up">' +
+                '<!-- 📊 簡化資訊卡片 -->' +
+                '<div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">' +
+                  '<div class="bg-white border-2 border-black p-4 md:p-6 shadow-[3px_3px_0px_rgba(0,0,0,1)]">' +
+                    '<div class="text-xs font-bold text-gray-500 uppercase mb-1">單抽</div>' +
+                    '<div class="font-bebas text-3xl md:text-5xl text-black">$' + currentKuji.price + '</div>' +
+                  '</div>' +
+                  '<div class="bg-white border-2 border-black p-4 md:p-6 shadow-[3px_3px_0px_rgba(0,0,0,1)]">' +
+                    '<div class="text-xs font-bold text-gray-500 uppercase mb-1">期望</div>' +
+                    '<div class="font-bebas text-3xl md:text-5xl ' + evColor + '">$' + ev + '</div>' +
+                  '</div>' +
+                  '<div class="bg-white border-2 border-black p-4 md:p-6 shadow-[3px_3px_0px_rgba(0,0,0,1)]">' +
+                    '<div class="text-xs font-bold text-gray-500 uppercase mb-1">剩餘</div>' +
+                    '<div class="font-bebas text-3xl md:text-5xl text-black">' + remaining + '<span class="text-xl md:text-2xl text-gray-400">/' + currentKuji.total + '</span></div>' +
+                  '</div>' +
+                  '<div class="bg-slate-800 border-2 border-black p-4 md:p-6 shadow-[3px_3px_0px_rgba(0,0,0,1)]">' +
+                    '<div class="text-xs font-bold text-gray-400 uppercase mb-1">保底</div>' +
+                    '<div class="font-bebas text-3xl md:text-5xl text-white">' + pityRemaining + '</div>' +
+                    '<div class="w-full bg-gray-700 h-1.5 mt-2 overflow-hidden">' +
+                      '<div class="h-full bg-yellow-400 transition-all duration-500" style="width: ' + pityProgress + '%"></div>' +
+                    '</div>' +
+                    '<div class="text-xs text-gray-400 mt-1">' + pityCount + '/' + PITY_SYSTEM.maxDraws + '</div>' +
+                  '</div>' +
+                '</div>' +
+                
+                '<div class="flex flex-col md:flex-row gap-4 md:gap-6">' +
+                  '<!-- 🎯 左側：圖片+抽獎按鈕區 -->' +
+                  '<div class="md:w-5/12">' +
+                    '<div class="bg-white border-3 border-black p-4 md:p-6 shadow-[6px_6px_0px_rgba(0,0,0,1)] sticky top-20">' +
+                      '<button onclick="event.stopPropagation(); toggleFavorite(' + currentKuji.id + ')" class="absolute top-3 right-3 z-10 ' + favColor + ' hover:scale-110 transition-transform">' +
+                        '<i data-lucide="heart" class="w-6 h-6 md:w-7 md:h-7 ' + favFill + '"></i>' +
+                      '</button>' +
+                      
+                      '<!-- 圖片 -->' +
+                      '<img src="' + currentKuji.image + '" class="w-full h-48 md:h-64 object-cover border-2 border-black mb-3">' +
+                      
+                      '<!-- 標題 -->' +
+                      '<h2 class="text-xl md:text-2xl font-black text-black italic mb-3 uppercase tracking-tight pr-8">' + currentKuji.title + '</h2>' +
+                      
+                      pityAlertHTML +
+                      
+                      '<!-- 剩餘數量卡片 -->' +
+                      '<div class="bg-slate-800 text-white p-3 md:p-4 mb-4 border-2 border-black">' +
+                        '<div class="flex justify-between items-center">' +
+                          '<span class="text-xs font-bold text-gray-400 uppercase">剩餘</span>' +
+                          '<span class="text-2xl md:text-3xl font-black text-yellow-400 font-bebas">' + remaining + ' / ' + currentKuji.total + '</span>' +
+                        '</div>' +
+                      '</div>' +
+                      
+                      '<!-- 🎯 超大抽獎按鈕區 -->' +
+                      '<div class="space-y-3 mb-4">' +
+                        '<!-- 單抽按鈕：黃色超大 -->' +
+                        '<button onclick="startDraw()" class="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-black py-6 md:py-7 text-2xl md:text-3xl border-4 border-black shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:shadow-[3px_3px_0px_rgba(0,0,0,1)] hover:translate-x-[3px] hover:translate-y-[3px] transition-all uppercase tracking-tight flex items-center justify-center gap-3">' +
+                          '<span class="text-4xl">🎫</span>' +
+                          '<div class="text-left leading-tight">' +
+                            '<div class="text-sm font-bold opacity-90">SINGLE</div>' +
+                            '<div class="text-3xl md:text-4xl">單抽 $' + currentKuji.price + '</div>' +
+                          '</div>' +
+                        '</button>' +
+                        
+                        '<!-- 10連抽按鈕：紅色大按鈕 -->' +
+                        '<button onclick="startDraw(10)" class="w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white font-black py-5 md:py-6 text-xl md:text-2xl border-4 border-black shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:shadow-[3px_3px_0px_rgba(0,0,0,1)] hover:translate-x-[3px] hover:translate-y-[3px] transition-all uppercase tracking-tight flex items-center justify-center gap-3">' +
+                          '<span class="text-3xl">🎁</span>' +
+                          '<div class="text-left leading-tight">' +
+                            '<div class="text-xs font-bold opacity-90">10x COMBO</div>' +
+                            '<div class="text-2xl md:text-3xl">$' + (currentKuji.price * 10) + '</div>' +
+                          '</div>' +
+                        '</button>' +
+                      '</div>' +
+                      
+                      '<!-- 提示文字 -->' +
+                      '<div class="text-center text-xs text-gray-500 font-bold bg-gray-50 py-2 border border-gray-200 rounded">' + evTip + '</div>' +
+                    '</div>' +
+                  '</div>' +
+                  
+                  '<!-- 右側：機率分析 -->' +
+                  '<div class="flex-1 space-y-4">' +
+                    '<div class="bg-white border-2 border-black p-5 md:p-6 shadow-[4px_4px_0px_rgba(0,0,0,1)]">' +
+                      '<h3 class="text-xl md:text-2xl font-black italic border-l-4 border-yellow-400 pl-3 uppercase mb-5 tracking-tighter flex items-center justify-between">' +
+                        '<span>完整機率分析</span>' +
+                        '<span class="text-xs md:text-sm text-gray-500 font-normal normal-case">Updated Real-time</span>' +
+                      '</h3>' +
+                      prizesHTML +
+                    '</div>' +
+                    '<div class="bg-gradient-to-r from-yellow-400 to-yellow-300 border-2 border-black p-5 md:p-6 shadow-[4px_4px_0px_rgba(0,0,0,1)]">' +
+                      '<h4 class="text-base md:text-lg font-black text-black mb-4 uppercase">💡 統計摘要</h4>' +
+                      '<div class="grid grid-cols-2 gap-3 md:gap-4">' +
+                        '<div class="bg-white/80 border border-black p-3 md:p-4">' +
+                          '<div class="text-xs md:text-sm text-gray-600 font-bold uppercase mb-1">總賞品數</div>' +
+                          '<div class="font-bebas text-3xl md:text-4xl text-black">' + Object.keys(stats).length + '</div>' +
+                        '</div>' +
+                        '<div class="bg-white/80 border border-black p-3 md:p-4">' +
+                          '<div class="text-xs md:text-sm text-gray-600 font-bold uppercase mb-1">已售出</div>' +
+                          '<div class="font-bebas text-3xl md:text-4xl text-black">' + currentKuji.sold + '</div>' +
+                        '</div>' +
+                        '<div class="bg-white/80 border border-black p-3 md:p-4">' +
+                          '<div class="text-xs md:text-sm text-gray-600 font-bold uppercase mb-1">大賞機率</div>' +
+                          '<div class="font-bebas text-3xl md:text-4xl ' + (stats.A.left > 0 ? 'text-green-600' : 'text-red-600') + '">' + (stats.A.left > 0 ? stats.A.probability.toFixed(1) + '%' : '完售') + '</div>' +
+                        '</div>' +
+                        '<div class="bg-white/80 border border-black p-3 md:p-4">' +
+                          '<div class="text-xs md:text-sm text-gray-600 font-bold uppercase mb-1">完售賞品</div>' +
+                          '<div class="font-bebas text-3xl md:text-4xl text-black">' + Object.values(stats).filter(p => p.left === 0).length + '</div>' +
+                        '</div>' +
+                      '</div>' +
+                    '</div>' +
+                  '</div>' +
+                '</div>' +
+              '</div>';
+        }
+        
+        function selectKuji(id) {
+            currentKuji = MOCK_DATA.find(x => x.id === id);
+            showView('detail');
+        }        function startDraw(count = 1) {
+            drawCount = count;
+            // 關閉所有可能開啟的覆蓋層
+            document.getElementById('result-overlay').classList.add('hidden');
+            document.getElementById('draw10-overlay').classList.add('hidden');
+            // 開啟選籤板
+            document.getElementById('selection-overlay').classList.remove('hidden');
+            document.body.classList.add('no-scroll');
+            renderTicketSelection();
+        }function renderTicketSelection() {
+            const carousel = document.getElementById('ticket-carousel');
+            const label = document.getElementById('draw-type-label');
+            carousel.innerHTML = '';
+            
+            // 更新標籤顯示
+            if (drawCount === 10) {
+                label.innerHTML = '10連抽模式 - 連續抽取10張籤！';
+            } else {
+                label.innerHTML = '選擇你的幸運籤';
+            }
+              const ticketCount = drawCount === 10 ? 10 : 20;
+            for (let i = 0; i < ticketCount; i++) {
+                const ticket = document.createElement('div');
+                ticket.className = 'ticket-card snap-center flex-shrink-0 w-36 h-52 md:w-40 md:h-56 flex flex-col items-center justify-between p-3 relative cursor-pointer';
+                
+                // 一番賞籤紙風格內容
+                ticket.innerHTML = `
+                    <!-- 頂部Logo區 -->
+                    <div class="w-full flex items-center justify-between">
+                        <div class="bg-white/90 px-2 py-0.5 text-[10px] font-black text-red-600 border border-red-600">一番賞</div>
+                        <div class="bg-white/90 px-2 py-0.5 text-[10px] font-black text-red-600 border border-red-600">No.${String(i + 1).padStart(3, '0')}</div>
+                    </div>
+                    
+                    <!-- 中央問號區 -->
+                    <div class="flex-1 flex items-center justify-center">
+                        <div class="text-white font-black italic text-6xl md:text-7xl opacity-30 drop-shadow-lg" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.3)">?</div>
+                    </div>
+                    
+                    <!-- 底部條碼區 -->
+                    <div class="w-full space-y-1">
+                        <div class="bg-white/90 p-1.5 border border-white/50">
+                            <div class="flex gap-[1px] h-8">
+                                ${Array(12).fill(0).map(() => `<div class="flex-1 bg-black" style="opacity: ${Math.random() > 0.3 ? 1 : 0.3}"></div>`).join('')}
+                            </div>
+                        </div>
+                        <div class="text-center text-[9px] font-mono font-bold text-white/90 tracking-wider bg-black/20 py-0.5">LOT ${1000 + i}</div>
+                    </div>
+                `;
+                
+                ticket.onclick = () => selectTicket(i);
+                carousel.appendChild(ticket);
+            }
+            selectTicket(drawCount === 10 ? 0 : 4);
+        }
+
+        function selectTicket(index) {
+            selectedIndex = index;
+            const items = document.querySelectorAll('.ticket-card');
+            items.forEach((item, i) => {
+                item.classList.toggle('active', i === index);
+                if (i === index) item.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            });
+        }
+
+        function moveCarousel(dir) {
+            selectedIndex = Math.max(0, Math.min(19, selectedIndex + dir));
+            selectTicket(selectedIndex);
+        }        function confirmSelection() {
+            if (drawCount === 10) {
+                // 10連抽：抽取10次並顯示結果
+                const results = [];
+                const ranks = Object.keys(currentKuji.prizes);
+                let guaranteedA = false;
+                
+                for (let i = 0; i < 10; i++) {
+                    // 🎯 保底機制：增加抽數並檢查是否觸發保底
+                    const currentPity = PITY_SYSTEM.increment(currentKuji.id);
+                    let rank;
+                    
+                    if (currentPity >= PITY_SYSTEM.maxDraws && !guaranteedA) {
+                        // 觸發保底：強制給A賞
+                        rank = 'A';
+                        guaranteedA = true;
+                        PITY_SYSTEM.reset(currentKuji.id);
+                    } else {
+                        rank = ranks[Math.floor(Math.random() * ranks.length)];
+                        // 如果抽到A賞，重置保底計數
+                        if (rank === 'A') {
+                            PITY_SYSTEM.reset(currentKuji.id);
+                        }
+                    }
+                      const p = currentKuji.prizes[rank];
+                    const prize = { rank, name: p.name, icon: p.icon };
+                    results.push(prize);
+                }
+                
+                // 儲存結果並顯示
+                drawnPrize = results[0];
+                sessionStorage.setItem('draw10Results', JSON.stringify(results));
+                
+                document.getElementById('selection-overlay').classList.add('hidden');
+                show10DrawResults(results);
+            } else {
+                // 單抽
+                // 🎯 保底機制：增加抽數
+                const currentPity = PITY_SYSTEM.increment(currentKuji.id);
+                const ranks = Object.keys(currentKuji.prizes);
+                let rank;
+                
+                if (currentPity >= PITY_SYSTEM.maxDraws) {
+                    // 觸發保底：強制給A賞
+                    rank = 'A';
+                    PITY_SYSTEM.reset(currentKuji.id);
+                } else {
+                    rank = ranks[Math.floor(Math.random() * ranks.length)];
+                    // 如果抽到A賞，重置保底計數
+                    if (rank === 'A') {
+                        PITY_SYSTEM.reset(currentKuji.id);
+                    }
+                }
+                  const p = currentKuji.prizes[rank];
+                drawnPrize = { rank, name: p.name, icon: p.icon };
+                
+                document.getElementById('selection-overlay').classList.add('hidden');
+                openPeelStage();
+            }
+        }
+        
+        // ============ 快速勝利包：輔助函數 ============
+        
+        function toggleFavorite(kujiId) {
+            FAVORITE_SYSTEM.toggle(kujiId);
+            // 重新渲染當前頁面
+            if (currentKuji && currentKuji.id === kujiId) {
+                showView('detail');
+            } else {
+                showView('list');
+            }        }
+        
+        function closeSelection() {
+            document.getElementById('selection-overlay').classList.add('hidden');
+            document.body.classList.remove('no-scroll');
+        }        function openPeelStage() {
+            const overlay = document.getElementById('peel-overlay');
+            const cover = document.getElementById('ticket-cover');
+            const prizeContent = document.getElementById('prize-content');
+            const container = document.getElementById('kuji-ticket-container');
+            
+            // 重要：重置遮罩外觀與狀態
+            document.getElementById('prize-icon').innerText = drawnPrize.icon;
+            document.getElementById('prize-rank').innerText = drawnPrize.rank;
+            document.getElementById('prize-name').innerText = drawnPrize.name;
+            
+            // 重置所有狀態和樣式
+            cover.style.clipPath = 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)';
+            cover.style.display = ''; // 確保遮罩顯示
+            cover.style.transition = '';
+            cover.classList.remove('tearing');
+            prizeContent.classList.remove('revealed');
+            document.getElementById('peel-hint').classList.remove('hidden');
+            
+            // 確保容器重新播放進場動畫
+            container.classList.remove('ticket-enter');
+            void container.offsetWidth; // 強制重排
+            container.classList.add('ticket-enter');
+            
+            overlay.classList.remove('hidden');
+            lucide.createIcons();
+            
+            // 稍微延遲以確保DOM更新和動畫開始
+            setTimeout(() => {
+                initPeelLogic();
+            }, 100);
+        }function initPeelLogic() {
+            const container = document.getElementById('kuji-ticket-container');
+            const cover = document.getElementById('ticket-cover');
+            const prizeContent = document.getElementById('prize-content');
+            let isDragging = false;
+            let lastProgress = 0;
+            let hasStarted = false;
+            let isFinishing = false; // 防止重複觸發完成
+            
+            const handleUpdate = (clientX, clientY) => {
+                if (!hasStarted) hasStarted = true;
+                if (isFinishing) return; // 如果正在完成，忽略後續更新
+                
+                const rect = container.getBoundingClientRect();
+                
+                // 優化算法：從左上角到右下角的對角線撕開
+                const xProgress = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+                const yProgress = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+                
+                // 使用非線性進度，讓開始更容易，後面需要更多拖動
+                const rawProgress = (xProgress + yProgress) / 2;
+                const progress = Math.pow(rawProgress, 0.85); // 稍微加速開始階段
+                
+                // 轉換為百分比
+                const p = Math.min(100, progress * 100);
+                
+                // 更新遮罩的 clip-path，從左上角撕開
+                cover.style.clipPath = `polygon(${p}% 0%, 100% 0%, 100% 100%, 0% 100%, 0% ${p}%)`;
+                
+                // 添加撕裂光效（移除抖動）
+                if (progress > 0.02 && progress < 0.93) {
+                    if (progress > lastProgress) {
+                        cover.classList.add('tearing');
+                    }
+                } else {
+                    cover.classList.remove('tearing');
+                }
+                
+                // 隱藏提示
+                if (p > 5) {
+                    document.getElementById('peel-hint').classList.add('hidden');
+                }
+                
+                // 開始顯示獎品（更早開始，更漸進）
+                if (p > 12 && !prizeContent.classList.contains('revealed')) {
+                    prizeContent.classList.add('revealed');
+                }
+                
+                // 完成撕開
+                if (p > 90 && !isFinishing) {
+                    isFinishing = true;
+                    finishPeel();
+                }
+                
+                lastProgress = progress;
+            };
+
+            // 桌面端滑鼠事件
+            const onMouseDown = (e) => {
+                isDragging = true;
+                handleUpdate(e.clientX, e.clientY);
+            };
+            
+            const onMouseMove = (e) => {
+                if (isDragging) {
+                    e.preventDefault();
+                    handleUpdate(e.clientX, e.clientY);
+                }
+            };
+            
+            const onMouseUp = () => {
+                isDragging = false;
+                // 移除抖動效果
+                cover.classList.remove('tearing');
+            };
+
+            // 移動端觸控事件
+            const onTouchStart = (e) => {
+                isDragging = true;
+                if (e.cancelable) e.preventDefault();
+                const touch = e.touches[0];
+                handleUpdate(touch.clientX, touch.clientY);
+            };
+            
+            const onTouchMove = (e) => {
+                if (isDragging) {
+                    if (e.cancelable) e.preventDefault();
+                    const touch = e.touches[0];
+                    handleUpdate(touch.clientX, touch.clientY);
+                }
+            };
+            
+            const onTouchEnd = () => {
+                isDragging = false;
+                // 移除抖動效果
+                cover.classList.remove('tearing');
+            };
+
+            // 綁定事件（使用 cover 作為觸發元素）
+            cover.addEventListener('mousedown', onMouseDown);
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+            
+            cover.addEventListener('touchstart', onTouchStart, { passive: false });
+            cover.addEventListener('touchmove', onTouchMove, { passive: false });
+            cover.addEventListener('touchend', onTouchEnd);
+
+            // 保存清理函數
+            container._cleanup = () => {
+                cover.removeEventListener('mousedown', onMouseDown);
+                window.removeEventListener('mousemove', onMouseMove);
+                window.removeEventListener('mouseup', onMouseUp);
+                cover.removeEventListener('touchstart', onTouchStart);
+                cover.removeEventListener('touchmove', onTouchMove);
+                cover.removeEventListener('touchend', onTouchEnd);
+            };
+        }        function finishPeel() {
+            const cover = document.getElementById('ticket-cover');
+            const prizeContent = document.getElementById('prize-content');
+            const container = document.getElementById('kuji-ticket-container');
+            
+            // 移除所有事件監聽
+            if (container._cleanup) {
+                container._cleanup();
+                container._cleanup = null;
+            }
+            
+            // 停止所有效果
+            cover.classList.remove('tearing');
+            
+            // 完全撕開動畫 - 保持遮罩可見直到完全移除
+            cover.style.transition = 'clip-path 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
+            cover.style.clipPath = 'polygon(100% 0%, 100% 0%, 100% 100%, 100% 100%, 100% 100%)';
+            
+            // 確保獎品完全顯示
+            prizeContent.classList.add('revealed');
+            
+            // 延遲跳轉到結果頁面，等待撕開動畫完成
+            setTimeout(() => {
+                // 完全移除遮罩的顯示
+                cover.style.display = 'none';
+                
+                setTimeout(() => {
+                    document.getElementById('peel-overlay').classList.add('hidden');
+                    showResult();
+                    // 重置過渡效果和顯示
+                    cover.style.transition = '';
+                    cover.style.display = '';
+                }, 200);
+            }, 500);
+        }        function showResult() {
+            const rank = drawnPrize.rank;
+            document.getElementById('res-icon').innerText = drawnPrize.icon;
+            document.getElementById('res-rank').innerText = rank;
+            document.getElementById('res-name').innerText = drawnPrize.name;
+            
+            const resultCard = document.getElementById('result-card');
+            const particlesContainer = document.getElementById('particles-container');
+            
+            // 清除之前的特效
+            resultCard.className = 'bg-yellow-400 w-full max-w-sm p-1 border-4 border-black shadow-[10px_10px_0px_rgba(0,0,0,1)] animate-scale-in relative';
+            particlesContainer.innerHTML = '';
+            
+            // 根據等級添加不同特效
+            if (rank === 'A') {
+                // A賞：金色卡片 + 粒子爆炸
+                resultCard.classList.add('prize-a-effect');
+                resultCard.style.backgroundColor = '#FFD700';
+                createGoldParticles();
+                
+                // 震動效果（如果支持）
+                if (navigator.vibrate) {
+                    navigator.vibrate([200, 100, 200, 100, 200]);
+                }
+            } else if (rank === 'B') {
+                // B賞：銀色卡片 + 星星飄落
+                resultCard.classList.add('prize-b-effect');
+                resultCard.style.backgroundColor = '#C0C0C0';
+                createFallingStars();
+            } else if (rank === 'C') {
+                // C賞：彩虹漸變卡片
+                resultCard.classList.add('prize-c-effect');
+                resultCard.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%)';
+            }
+            
+            document.getElementById('result-overlay').classList.remove('hidden');
+            lucide.createIcons();
+        }
+        
+        // 創建金色粒子爆炸效果（A賞）
+        function createGoldParticles() {
+            const container = document.getElementById('particles-container');
+            const particleCount = 30;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                
+                // 隨機位置在中心附近
+                const centerX = window.innerWidth / 2;
+                const centerY = window.innerHeight / 2;
+                particle.style.left = centerX + 'px';
+                particle.style.top = centerY + 'px';
+                
+                // 隨機方向
+                const angle = (Math.PI * 2 * i) / particleCount;
+                const distance = 150 + Math.random() * 100;
+                const tx = Math.cos(angle) * distance;
+                const ty = Math.sin(angle) * distance;
+                
+                particle.style.setProperty('--tx', tx + 'px');
+                particle.style.setProperty('--ty', ty + 'px');
+                
+                // 金色粒子
+                particle.style.backgroundColor = '#FFD700';
+                particle.style.boxShadow = '0 0 10px #FFD700';
+                
+                container.appendChild(particle);
+                
+                // 動畫結束後移除
+                setTimeout(() => particle.remove(), 1500);
+            }
+        }
+        
+        // 創建銀色星星飄落效果（B賞）
+        function createFallingStars() {
+            const container = document.getElementById('particles-container');
+            const starCount = 15;
+            const stars = ['⭐', '✨', '💫', '🌟'];
+            
+            for (let i = 0; i < starCount; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.textContent = stars[Math.floor(Math.random() * stars.length)];
+                
+                // 隨機水平位置
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = '-50px';
+                
+                // 隨機延遲
+                star.style.animationDelay = (Math.random() * 0.5) + 's';
+                
+                container.appendChild(star);
+                
+                // 動畫結束後移除
+                setTimeout(() => star.remove(), 2500);
+            }
+        }        function show10DrawResults(results) {
+            const overlay = document.getElementById('draw10-overlay');
+            const resultsContainer = document.getElementById('draw10-results');
+            const statsContainer = document.getElementById('draw10-stats');
+            
+            // 統計各等級數量
+            const rankCount = {};
+            results.forEach(r => {
+                rankCount[r.rank] = (rankCount[r.rank] || 0) + 1;
+            });
+            
+            // 找出最高等級
+            const hasA = rankCount['A'] > 0;
+            const hasB = rankCount['B'] > 0;
+              // 🎊 優化顯示：大獎顯示在上方，其他獎品橫向滑動
+            let highlightHTML = '';
+            let normalCards = [];
+            
+            results.forEach((prize, index) => {
+                const isHighlight = prize.rank === 'A' || prize.rank === 'B';
+                
+                if (isHighlight) {
+                    // A/B賞：大卡片
+                    highlightHTML += `
+                        <div class="relative bg-white border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] md:shadow-[6px_6px_0px_rgba(0,0,0,1)] border-black p-3 md:p-4 text-center col-span-1 md:col-span-2">
+                            <div class="absolute -top-1 -right-1 md:-top-2 md:-right-2 bg-yellow-400 text-black font-black text-[10px] md:text-xs px-1.5 py-0.5 md:px-2 md:py-1 border border-black md:border-2 rotate-12 animate-pulse">HIT!</div>
+                            <div class="text-[10px] md:text-xs font-bold text-purple-600 mb-1">#${index + 1}</div>
+                            <div class="text-5xl md:text-7xl mb-2 md:mb-3 animate-bounce">${prize.icon}</div>
+                            <div class="text-3xl md:text-5xl font-black italic font-bebas ${prize.rank === 'A' ? 'text-yellow-600' : 'text-gray-600'}">${prize.rank}</div>
+                            <div class="text-xs md:text-sm font-bold text-gray-600 mt-1 md:mt-2 line-clamp-2">${prize.name}</div>
+                        </div>
+                    `;
+                } else {
+                    // 普通獎品：小卡片（橫向滑動）
+                    normalCards.push(`
+                        <div class="flex-shrink-0 w-28 md:w-32 bg-white border-2 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)] p-2 md:p-3 text-center">
+                            <div class="text-[9px] md:text-[10px] font-bold text-gray-500 mb-1">#${index + 1}</div>
+                            <div class="text-3xl md:text-4xl mb-1">${prize.icon}</div>
+                            <div class="text-xl md:text-2xl font-black italic font-bebas text-black">${prize.rank}</div>
+                            <div class="text-[10px] md:text-xs font-bold text-gray-600 mt-1 truncate">${prize.name}</div>
+                        </div>
+                    `);
+                }
+            });
+            
+            // 組合HTML：大獎在上方網格，普通獎品橫向滑動
+            let finalHTML = '';
+            
+            // 恭喜中獎橫幅
+            if (highlightHTML) {
+                finalHTML += '<div class="col-span-full text-center mb-2 md:mb-3"><div class="inline-block bg-gradient-to-r from-yellow-400 to-orange-400 text-black font-black px-4 py-1.5 md:px-6 md:py-2 text-sm md:text-lg border-2 border-black uppercase">🎉 恭喜中獎！</div></div>';
+            }
+            
+            // A/B賞大獎
+            finalHTML += highlightHTML;
+            
+            // 分隔線
+            if (highlightHTML && normalCards.length > 0) {
+                finalHTML += '<div class="col-span-full border-t border-dashed md:border-t-2 border-gray-300 my-2 md:my-3"></div>';
+            }
+            
+            // 普通獎品橫向滑動區域
+            if (normalCards.length > 0) {
+                finalHTML += `
+                    <div class="col-span-full">
+                        <div class="flex items-center gap-2 mb-2">
+                            <div class="text-xs md:text-sm font-bold text-gray-500 uppercase">其他獎品</div>
+                            <div class="text-[10px] md:text-xs text-gray-400">← 滑動查看更多</div>
+                        </div>
+                        <div class="flex gap-2 md:gap-3 overflow-x-auto scrollbar-hide pb-2">
+                            ${normalCards.join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            resultsContainer.innerHTML = finalHTML;
+              // 📊 優化統計：使用更直觀的圖表式顯示
+            const sortedRanks = Object.entries(rankCount).sort((a, b) => a[0].localeCompare(b[0]));
+            statsContainer.innerHTML = sortedRanks.map(([rank, count]) => {
+                const percentage = (count / 10 * 100).toFixed(0);
+                const isHighRank = rank === 'A' || rank === 'B';
+                return `
+                    <div class="bg-white border-2 border-black p-2 md:p-4 ${isHighRank ? 'col-span-1' : ''}">
+                        <div class="flex items-center justify-between mb-1 md:mb-2">
+                            <div class="font-black text-lg md:text-2xl ${rank === 'A' ? 'text-yellow-600' : rank === 'B' ? 'text-gray-600' : 'text-black'}">${rank}賞</div>
+                            <div class="text-2xl md:text-3xl font-bebas ${rank === 'A' ? 'text-yellow-600' : 'text-purple-600'}">×${count}</div>
+                        </div>
+                        <div class="w-full bg-gray-200 h-2 md:h-3 border border-black overflow-hidden">
+                            <div class="h-full ${rank === 'A' ? 'bg-yellow-500' : rank === 'B' ? 'bg-gray-500' : 'bg-purple-500'} transition-all duration-500" style="width: ${percentage}%"></div>
+                        </div>
+                        <div class="text-[10px] md:text-xs text-gray-500 mt-1 text-right font-bold">${percentage}%</div>
+                    </div>
+                `;
+            }).join('');
+            
+            overlay.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        showView('list');
+    </script>
+</body>
+</html>
+`
