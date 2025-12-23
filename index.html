@@ -16,6 +16,15 @@
             --anime-red: #ef4444;
             --anime-cyan: #22d3ee;
             --anime-dark: #0f172a;
+        }        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            overflow-x: hidden;
         }
 
         body {
@@ -23,10 +32,10 @@
             background-color: var(--anime-dark);
             color: white;
             -webkit-tap-highlight-color: transparent;
-            overflow-x: hidden;
             background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 0);
             background-size: 20px 20px;
             user-select: none;
+            position: relative;
         }
 
         .font-bebas { font-family: 'Bebas Neue', cursive; }
@@ -96,7 +105,7 @@
                         0 0 40px rgba(255, 87, 34, 0.8),
                         0 8px 16px rgba(0,0,0,0.4);
             z-index: 10;
-        }/* 咪牌封面遮罩 - 移除 pointer-events */
+        }        /* 咪牌封面遮罩 - 移除 pointer-events */
         #ticket-cover {
             clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
             will-change: clip-path;
@@ -106,7 +115,13 @@
         
         #ticket-cover:active {
             cursor: grabbing;
-        }        /* 移除抖動效果 */        /* 撕裂痕跡效果 */
+        }
+
+        /* 防止所有覆蓋層造成橫向滾動 */
+        .fixed {
+            max-width: 100vw;
+            overflow-x: hidden;
+        }/* 移除抖動效果 */        /* 撕裂痕跡效果 */
         .tear-effect {
             position: absolute;
             top: 0;
@@ -140,9 +155,7 @@
         #prize-content.revealed {
             opacity: 1;
             transform: scale(1) rotate(0deg);
-        }
-
-        /* 容器動畫 */
+        }        /* 容器動畫 */
         @keyframes ticket-enter {
             from {
                 opacity: 0;
@@ -156,7 +169,29 @@
 
         .ticket-enter {
             animation: ticket-enter 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-        }        /* 移除全景遮罩動畫 */
+        }
+
+        /* 防止陰影造成橫向滾動 */
+        .shadow-large {
+            box-shadow: 6px 6px 0px rgba(0,0,0,1);
+        }
+
+        @media (min-width: 768px) {
+            .shadow-large {
+                box-shadow: 10px 10px 0px rgba(0,0,0,1);
+            }
+        }
+
+        /* 確保容器不會因為陰影溢出 */
+        .container-safe {
+            margin-right: 12px;
+        }
+
+        @media (min-width: 768px) {
+            .container-safe {
+                margin-right: 16px;
+            }
+        }/* 移除全景遮罩動畫 */
 
         /* 跑馬燈 */
         .marquee-container { overflow: hidden; white-space: nowrap; }
@@ -319,6 +354,29 @@
             font-size: 24px;
             animation: starFall 2s linear forwards;
         }
+        @media (min-width: 768px) {
+            .container-safe {
+                margin-right: 16px;
+            }
+        }
+
+        /* 為所有主要容器添加安全邊距，防止陰影造成橫向溢出 */
+        .space-y-10 > section,
+        .space-y-6 > section,
+        .grid > div {
+            max-width: 100%;
+        }
+
+        /* 修復絕對定位元素可能造成的溢出 */
+        .absolute.-right-4 {
+            right: -12px;
+        }
+
+        @media (max-width: 767px) {
+            .absolute.-right-4 {
+                right: -8px;
+            }
+        }
     </style>
 </head>
 <body class="pb-20 md:pb-0">    <!-- 頂部導覽 -->
@@ -352,7 +410,7 @@
         </div>
     </header>
 
-    <main id="app-content" class="max-w-6xl mx-auto p-4 md:p-6"></main>    <!-- 1. 選籤板 (桌機支援按鈕與拖拽) - 添加全景遮罩 -->
+    <main id="app-content" class="max-w-6xl mx-auto p-4 md:p-6 w-full"></main>    <!-- 1. 選籤板 (桌機支援按鈕與拖拽) - 添加全景遮罩 -->
     <div id="selection-overlay" class="fixed inset-0 z-50 hidden flex flex-col items-center justify-center bg-black/98 overflow-hidden">
         <!-- 全景遮罩背景 -->
         <div class="speed-lines absolute inset-0 opacity-10 pointer-events-none"></div>
@@ -380,7 +438,7 @@
     </div>    <!-- 2. 咪牌 - 全景遮罩 -->
     <div id="peel-overlay" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4 select-none">
         <!-- 全景遮罩背景 -->
-        <div class="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-800 to-black"></div>
+        <div class="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-800 to黑色"></div>
         <div class="speed-lines absolute inset-0 opacity-10 pointer-events-none"></div>
         
         <div class="relative z-10 w-full max-w-[300px] md:max-w-sm flex flex-col items-center">
@@ -421,8 +479,7 @@
         <button onclick="document.getElementById('result-overlay').classList.add('hidden'); showView('detail');" class="absolute top-4 right-4 z-50 bg-white/10 hover:bg-white/20 text-white p-3 rounded-full border border-white/20 transition-all">
             <i data-lucide="x" class="w-6 h-6 md:w-7 md:h-7"></i>
         </button>
-        
-        <div id="result-card" class="bg-yellow-400 w-full max-w-sm p-1 border-4 border-black shadow-[10px_10px_0px_rgba(0,0,0,1)] animate-scale-in relative">
+          <div id="result-card" class="bg-yellow-400 w-full max-w-sm p-1 border-4 border-black shadow-large animate-scale-in relative mx-auto">
             <div class="bg-white p-6 md:p-8 border-2 border-black relative text-center">
                 <div id="res-icon" class="w-28 h-28 md:w-32 md:h-32 mx-auto bg-black flex items-center justify-center text-6xl md:text-7xl mb-4 border-4 border-yellow-400 shadow-lg rotate-3">🏆</div>
                 <h2 id="res-rank" class="text-8xl md:text-9xl font-black text-black italic leading-none font-bebas">A</h2>
@@ -440,10 +497,9 @@
         <!-- 關閉按鈕 -->
         <button onclick="document.getElementById('draw10-overlay').classList.add('hidden'); showView('detail');" class="fixed top-4 right-4 z-[80] bg-white/10 hover:bg-white/20 text-white p-3 rounded-full border border-white/20 transition-all">
             <i data-lucide="x" class="w-6 h-6 md:w-7 md:h-7"></i>
-        </button>
-        
+        </button>        
         <div class="relative z-10 w-full max-w-4xl mx-auto p-4 py-8 md:py-12 min-h-full flex items-center">
-            <div class="w-full bg-gradient-to-r from-purple-600 to-pink-600 p-1 border-4 border-black shadow-[10px_10px_0px_rgba(0,0,0,1)]">
+            <div class="w-full bg-gradient-to-r from-purple-600 to-pink-600 p-1 border-4 border-black shadow-large container-safe">
                 <div class="bg-white p-4 md:p-8 border-2 border-black">
                     <h2 class="text-2xl md:text-4xl font-black text-center mb-2 italic uppercase bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">10連抽結果</h2>
                     <p class="text-center text-gray-500 font-bold mb-4 md:mb-6 text-xs md:text-base">10 CONSECUTIVE DRAWS RESULT</p>
@@ -465,7 +521,7 @@
                         <button onclick="startDraw(1)" class="flex-1 btn-anime py-3 md:py-4 text-base md:text-xl">
                             單抽模式
                         </button>
-                        <button onclick="showView('list')" class="bg-black text-white font-black py-3 md:py-4 px-4 md:px-6 text-xs md:text-base uppercase border-2 border-white">返回大廳</button>
+                        <button onclick="showView('list')" class="bg-black text白色 font-black py-3 md:py-4 px-4 md:px-6 text-xs md:text-base uppercase border-2 border-white">返回大廳</button>
                     </div>
                 </div>
             </div>
@@ -692,7 +748,7 @@
                                 <div class="md:w-1/2 h-56 md:h-80 overflow-hidden border-b-2 md:border-b-0 md:border-r-2 border-black">
                                     <img src="${hotKuji.image}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
                                 </div>
-                                <div class="md:w-1/2 p-6 md:p-8 flex flex-col justify-between bg-white relative">
+                                <div class="md:w-1/2 p-6 md:p-8 flex flex-col justify-between bg白 relative">
                                     <div class="absolute -right-4 top-4 rotate-12 bg-red-600 text-white font-black px-5 py-2 text-sm md:text-base skew-box shadow-lg">HOT BOARD</div>
                                     <div>
                                         <span class="bg-black text-yellow-400 font-black px-3 py-1.5 text-sm md:text-base italic skew-box inline-block mb-4"><span class="unskew">RECOMMENDED</span></span>
@@ -853,7 +909,7 @@
                 prizesHTML += '        <div class="flex items-center gap-2">';
                 prizesHTML += '          <span class="text-2xl md:text-3xl font-black italic text-black">' + rank + ' 賞</span>';
                 if (prize.left === 0) {
-                    prizesHTML += '          <span class="text-xs md:text-sm font-black bg-red-100 text-red-600 px-3 py-1 border border-red-200">已完售</span>';
+                    prizesHTML += '          <span class="text-xs md:text-sm font黑 bg-red-100 text-red-600 px-3 py-1 border border-red-200">已完售</span>';
                 }
                 prizesHTML += '        </div>';
                 prizesHTML += '        <div class="text-base md:text-lg font-black text-gray-700 uppercase">' + prize.name + '</div>';
@@ -919,7 +975,7 @@
                   '</div>' +
                   '<div class="bg-slate-800 border-2 border-black p-4 md:p-6 shadow-[3px_3px_0px_rgba(0,0,0,1)]">' +
                     '<div class="text-xs font-bold text-gray-400 uppercase mb-1">保底</div>' +
-                    '<div class="font-bebas text-3xl md:text-5xl text-white">' + pityRemaining + '</div>' +
+                    '<div class="font-bebas text-3xl md:text-5xl text白">' + pityRemaining + '</div>' +
                     '<div class="w-full bg-gray-700 h-1.5 mt-2 overflow-hidden">' +
                       '<div class="h-full bg-yellow-400 transition-all duration-500" style="width: ' + pityProgress + '%"></div>' +
                     '</div>' +
@@ -1045,7 +1101,7 @@
                     <!-- 頂部Logo區 -->
                     <div class="w-full flex items-center justify-between">
                         <div class="bg-white/90 px-2 py-0.5 text-[10px] font-black text-red-600 border border-red-600">一番賞</div>
-                        <div class="bg-white/90 px-2 py-0.5 text-[10px] font-black text-red-600 border border-red-600">No.${String(i + 1).padStart(3, '0')}</div>
+                        <div class="bg白/90 px-2 py-0.5 text-[10px] font-black text-red-600 border border-red-600">No.${String(i + 1).padStart(3, '0')}</div>
                     </div>
                     
                     <!-- 中央問號區 -->
@@ -1346,9 +1402,8 @@
             
             const resultCard = document.getElementById('result-card');
             const particlesContainer = document.getElementById('particles-container');
-            
-            // 清除之前的特效
-            resultCard.className = 'bg-yellow-400 w-full max-w-sm p-1 border-4 border-black shadow-[10px_10px_0px_rgba(0,0,0,1)] animate-scale-in relative';
+              // 清除之前的特效
+            resultCard.className = 'bg-yellow-400 w-full max-w-sm p-1 border-4 border-black shadow-large animate-scale-in relative mx-auto';
             particlesContainer.innerHTML = '';
             
             // 根據等級添加不同特效
@@ -1539,4 +1594,3 @@
     </script>
 </body>
 </html>
-`
